@@ -1,0 +1,115 @@
+---
+output: pdf_document
+---
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+library(ggplot2)
+
+```
+# SI 618 Homework 7 (Soobum Jun)
+# Part 1 (40 points)
+## Question 1 : Load Country Data  (5 points)
+First the provided TSV data file is loaded into R using the __read.table()__ function. Display the first 15 rows
+of the data frame:
+```{r, echo=FALSE}
+df <- read.csv("countrydata_withregion.tsv", sep = '\t',quote="", header = TRUE)
+head(df,15)
+```
+
+
+## Question 2 : Scatter plot of log transformed data (5 points)
+Logarithms (base 2) of the area and the population of each country are computed and used to produce the
+following scatter plot using the __qplot()__ function. Use __{r echo=FALSE, fig.width=7}__ for all of the plots.
+```{r, echo=FALSE, fig.width=7}
+df$log_area = log2(df$area)
+df$log_pop = log2(df$population)
+qplot(x =log_area, y=log_pop, data = df, xlab = "Log base 2 of the area", ylab = "Log base 2 of the population")
+```
+
+## Question3 : Data aggregated by region  (15 points)
+The areas and populations of all countries in a region are summed up using the __aggregate()__ function,
+respectively. Then the following two pie charts are created using the __pie()__ function
+```{r,echo=FALSE, , fig.width=7}
+areas <- aggregate(df$area, by=list(region = df$region),FUN=sum)
+pops <- aggregate(as.numeric(df$population), by=list(region = df$region), FUN=sum)
+pie(areas$x, labels=areas$region,main="Area of Regions")
+```
+
+```{r,echo=FALSE, fig.width=7}
+pie(pops$x, labels=pops$region,main="Population of Regions")
+```
+
+## Question4 : Visualization of Population per sq km of Regions (15 points)
+A new data frame is created to contain the population per sq km of each region using the data.frame()
+function. The data frame is then sorted by population per sq km in decreasing order with the help of the
+reorder() function. Finally, the following bar plot is created using the qplot() function with __geom=“bar”__.
+In order to rotate the x-axis labels, add + __theme(axis.text.x = element_text(angle = 60, hjust =1))__ at the end of the __qplot()__ function call.
+
+```{r,echo=FALSE, fig.width=7}
+library(plyr)
+names(areas) <-c('region','area')
+names(pops) <-c('region','pop')
+ap<-merge(areas,pops, by.x = "region")
+ap<-ddply(ap, c("region"), summarise, ppk = pop/area)
+qplot(reorder(region, -ppk), data = ap, geom = "bar", weight = ppk, xlab="Region") + scale_y_continuous("Population per sq km in Regions")+ theme(axis.text.x = element_text(angle = 60, hjust =1))
+```
+
+# Part 2 (60 Points)
+
+## Question5 : Load yelp data and Generate summary (10 points)
+Load the TSV data file: businessdata.tsv into a R data frame using the __read.table()__ function. The city, state
+and main_category columns should be converted to factors. Then listwise deletion (http://en.wikipedia.org/
+wiki/Listwise_deletion) is applied to remove records with missing data (use the __na.omit()__ function). Then
+the data.frame is converted to a data.table. Here is the summary of the data table:
+```{r, echo=FALSE}
+data = read.table("businessdata.tsv", sep="\t",comment.char="",quote="",header=TRUE)
+data$name = as.character(data$name)
+data$city = as.factor(data$city)
+data$state = as.factor(data$state)
+data$main_category = as.factor(data$main_category)
+data = na.omit(data)
+summary(data)
+```
+
+## Question 6 : Histograms of Star Ratings (10 points)
+The Histogram of star ratings is plotted with the __qplot()__ or __ggplot()__ function. The actual counts plot is
+shown. (Use binwidth=1)
+
+```{r,, echo=FALSE, fig.width=7}
+ggplot(aes(x=stars,fill=state), data=data) + geom_histogram(binwidth = 1) +
+  facet_wrap(~state,nrow=1) + ggtitle("Histogram of Star Ratings") + xlab("Stars")
+```
+
+## Question 7 : Histograms of Review Counts (10 points)
+
+Histograms of review counts are plotted with the __qplot()__ or __ggplot()__ function. (Use __binwidth=10__)
+```{r, echo=FALSE, fig.width=7}
+ggplot(aes(x=review_count),data=data)+geom_histogram(binwidth = 10) + ggtitle("Histogram of Review Counts") + xlab("Review Counts") + ylab("")
+```
+We can see that the distribution of review counts has a long tail. To zoom in on the bars to the left of the
+200 mark, we use the __data.table syntax__ or the __subset()__ function to select just the data with review count
+<= 200. And then plot the histogram again with __binwidth=1__.
+```{r, echo=FALSE, fig.width=7}
+data_new = subset(data, review_count<=200)
+ggplot(aes(x=review_count),data=data_new)+geom_histogram(binwidth = 1) + ggtitle("Histogram of Review Counts (Filtered)") + xlab("Review Counts")+ ylab("")
+```
+
+
+## Question 8 : Boxplot of Star Ratings by States (10 points)
+```{r, echo=FALSE, fig.width=7}
+ggplot(aes(x=state,y=stars,color=state,fill=state), data=data) + geom_boxplot(alpha=.5) + xlab("") +
+  ylab("Stars") + ggtitle("Star Ratings by States")
+```
+
+## Question 9 : Bar Chart of Number of Businesses by State (10 points)
+
+The states should be orderd by descreasing height of bars. Use the __reorder()__ function
+
+
+
+```{r, echo=FALSE, fig.width=7}
+new_data<-data.frame(table(data$state))
+colnames(new_data) <- c('state', 'counts')
+ggplot(new_data, aes(x = reorder(state, -counts),y = counts))+ geom_bar(stat = 'identity')+ xlab("State") +ylab("")
+```
